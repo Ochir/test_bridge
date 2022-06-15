@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: mysql
+spec:
+  ports:
+  - port: 3306
+  selector:
+    app: mysql
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - image: mysql:8
+        name: mysql
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom: 
+            secretKeyRef:
+              name: mysql-pass
+              key: password
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql
+        - name: mysql-initdb
+          mountPath: /docker-entrypoint-initdb.d          
+      volumes:
+      - name: mysql-initdb
+        configMap:
+          name: initdb              
+      - name: mysql-persistent-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc-claim
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: initdb
+  namespace: mysql
+data:
+  initdb.sql: |
+    CREATE DATABASE IF NOT EXISTS clienta;
+    CREATE DATABASE IF NOT EXISTS clientb;
+    CREATE USER IF NOT EXISTS 'clienta'@'%' IDENTIFIED BY 'w9TKsXn4VH8LZZaF';
+    CREATE USER IF NOT EXISTS 'clientb'@'%' IDENTIFIED BY 'YgwHJxPfya87qz4Z';   
+    USE clienta;
+    GRANT ALL PRIVILEGES ON *   .* TO 'clienta'@'%';
+    USE clientb;
+    GRANT ALL PRIVILEGES ON clientb.* TO 'clientb'@'%';
+    FLUSH PRIVILEGES;

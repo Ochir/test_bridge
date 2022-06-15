@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: clienta
+  namespace: client-a
+  labels:
+    app: clienta
+spec:
+  ports:
+    - port: 80
+  selector:
+    app: clienta
+    tier: frontend
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: clienta-pv-claim
+  namespace: client-a
+  labels:
+    app: clienta
+spec:
+  storageClassName: managed-premium
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clienta
+  namespace: client-a
+  labels:
+    app: clienta
+spec:
+  selector:
+    matchLabels:
+      app: clienta
+      tier: frontend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: clienta
+        tier: frontend
+    spec:
+      containers:
+      - image: wordpress:5.9.3-php8.1-apache
+        name: clienta
+        env:
+          - name: WORDPRESS_DB_HOST
+            value: mysql
+          - name: WORDPRESS_DB_PASSWORD
+            value: w9TKsXn4VH8LZZaF
+            #valueFrom:
+            #  secretKeyRef:
+            #    name: mysql-pass
+            #    key: password
+          - name: WORDPRESS_DB_USER
+            value: clienta
+          - name: WORDPRESS_DB_NAME
+            value: clienta 
+          - name: WORDPRESS_DEBUG            
+            value: "1"           
+        ports:
+        - containerPort: 80
+          name: clienta
+        volumeMounts:
+        - name: clienta-persistent-storage
+          mountPath: /var/www/html
+      volumes:
+      - name: clienta-persistent-storage
+        persistentVolumeClaim:
+          claimName: clienta-pv-claim

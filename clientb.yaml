@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: clientb
+  namespace: client-b
+  labels:
+    app: clientb
+spec:
+  ports:
+    - port: 80
+  selector:
+    app: clientb
+    tier: frontend
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: clientb-pv-claim
+  namespace: client-b
+  labels:
+    app: clientb
+spec:
+  storageClassName: managed-premium
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clientb
+  namespace: client-b
+  labels:
+    app: clientb
+spec:
+  selector:
+    matchLabels:
+      app: clientb
+      tier: frontend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: clientb
+        tier: frontend
+    spec:
+      containers:
+      - image: wordpress:5.8.3-php8.0-apache
+        name: clientb
+        env:
+          - name: WORDPRESS_DB_HOST
+            value: mysql
+          - name: WORDPRESS_DB_PASSWORD
+            value: YgwHJxPfya87qz4Z
+            #valueFrom:
+            #  secretKeyRef:
+            #    name: mysql-pass
+            #    key: password
+          - name: WORDPRESS_DB_USER
+            value: clientb
+          - name: WORDPRESS_DB_NAME
+            value: clientb                
+          - name: WORDPRESS_DEBUG
+            value: "1"            
+        ports:
+        - containerPort: 80
+          name: clientb
+        volumeMounts:
+        - name: clientb-persistent-storage
+          mountPath: /var/www/html
+      volumes:
+      - name: clientb-persistent-storage
+        persistentVolumeClaim:
+          claimName: clientb-pv-claim
